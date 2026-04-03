@@ -17,12 +17,34 @@ $ExcludedDirs = @(
 
 Write-Host "Scanning $Path for files larger than $MinSizeMB MB (excluding system folders)..." -ForegroundColor Cyan
 
-Get-ChildItem -Path $Path -Recurse -File -ErrorAction SilentlyContinue -Force |
+if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+    throw "Path '$Path' does not exist or is not a directory."
+}
+
+$resolvedRoot = [System.IO.Path]::GetFullPath((Resolve-Path -LiteralPath $Path).Path).TrimEnd('\')
+$excludedSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($excluded in $ExcludedDirs) {
+    [void]$excludedSet.Add([System.IO.Path]::GetFullPath($excluded).TrimEnd('\'))
+}
+
+$minBytes = [int64]$MinSizeMB * 1MB
+
+Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File -ErrorAction SilentlyContinue -Force |
     Where-Object {
+        $dir = [System.IO.Path]::GetFullPath($_.DirectoryName).TrimEnd('\')
+        $isExcluded = $false
+
+        foreach ($excludedRoot in $excludedSet) {
+            if ($dir.StartsWith("$excludedRoot\", [System.StringComparison]::OrdinalIgnoreCase) -or $dir.Equals($excludedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $isExcluded = $true
+                break
+            }
+        }
+
         -not ($_.Attributes -match "System") -and
         -not ($_.Attributes -match "Hidden") -and
-        ($ExcludedDirs -notcontains $_.DirectoryName) -and
-        $_.Length -ge ($MinSizeMB * 1MB)
+        -not $isExcluded -and
+        $_.Length -ge $minBytes
     } |
     Select-Object FullName,
                   @{Name="SizeMB";Expression={[math]::Round($_.Length / 1MB, 2)}},
