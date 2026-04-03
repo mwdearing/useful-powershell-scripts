@@ -9,6 +9,53 @@
 
 Write-Host "`n=== FULL PYTHON REMOVAL STARTED ===`n" -ForegroundColor Cyan
 
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw "Run this script from an elevated PowerShell session (Administrator)."
+}
+
+function Invoke-UninstallCommand {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$UninstallString
+    )
+
+    if ([string]::IsNullOrWhiteSpace($UninstallString)) { return $false }
+
+    $exePath = $null
+    $exeArgs = ""
+
+    if ($UninstallString -match '^\s*"([^"]+)"\s*(.*)$') {
+        $exePath = $matches[1]
+        $exeArgs = $matches[2]
+    } elseif ($UninstallString -match '^\s*([^\s]+)\s*(.*)$') {
+        $exePath = $matches[1]
+        $exeArgs = $matches[2]
+    }
+
+    if ([string]::IsNullOrWhiteSpace($exePath)) { return $false }
+    if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
+        Write-Host "Uninstaller not found on disk: $exePath" -ForegroundColor DarkYellow
+        return $false
+    }
+
+    $silentArgs = @()
+    if ($exeArgs) { $silentArgs += $exeArgs }
+    if ($exePath -like "*.msi" -or $exePath -like "*.msix") {
+        $silentArgs += "/qn"
+    } else {
+        $silentArgs += "/quiet"
+    }
+
+    $argumentString = ($silentArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join " "
+
+    try {
+        Start-Process -FilePath $exePath -ArgumentList $argumentString -Wait -NoNewWindow -ErrorAction Stop | Out-Null
+        return $true
+    } catch {
+        Write-Host "Uninstall process failed: $exePath" -ForegroundColor Red
+        return $false
+    }
+}
 
 # ------------------------------------------------------------
 # 1. ATTEMPT NORMAL UNINSTALLS
@@ -35,9 +82,8 @@ foreach ($key in $uninstallKeys) {
 
             if ($props.UninstallString) {
                 Write-Host "Running uninstall: $($props.UninstallString)" -ForegroundColor DarkYellow
-                try {
-                    & $props.UninstallString /quiet
-                } catch {
+                $success = Invoke-UninstallCommand -UninstallString $props.UninstallString
+                if (-not $success) {
                     Write-Host "Uninstall failed or missing EXE — will remove manually." -ForegroundColor Red
                 }
             }
@@ -104,12 +150,15 @@ foreach ($target in $envTargets) {
 
     if ($path) {
         $newPath = $path.Split(";") | Where-Object {
+            if ([string]::IsNullOrWhiteSpace($_)) { return $false }
             $keep = $true
             foreach ($remove in $pathsToRemove) {
                 if ($_ -like "*$remove*") { $keep = $false }
             }
             $keep
-        } -join ";"
+        } | Select-Object -Unique
+
+        $newPath = $newPath -join ";"
 
         if ($newPath -ne $path) {
             Write-Host "PATH cleaned for $target" -ForegroundColor Green
