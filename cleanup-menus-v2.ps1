@@ -2,6 +2,11 @@
 #        WINDOWS CLEANUP SUITE (ENHANCED)
 # ============================================
 
+# Script overview:
+# - Interactive menu-driven cleanup toolkit for Windows hosts.
+# - Includes logging, cache cleanup, scanner utilities, and uninstall helpers.
+# - Uses best-effort deletion (`-ErrorAction SilentlyContinue`) to continue through locked files.
+
 # -----------------------------
 #  LOGGING SYSTEM
 # -----------------------------
@@ -14,6 +19,10 @@ if (!(Test-Path $LogPath)) {
 }
 
 function Write-Log {
+    <#
+        .SYNOPSIS
+            Writes a timestamped message to the suite log file.
+    #>
     param([string]$Message)
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     "$timestamp  $Message" | Out-File -FilePath $LogFile -Append -Encoding utf8
@@ -26,6 +35,10 @@ Write-Log "=== Cleanup Suite Started ==="
 # -----------------------------
 
 function Clear-TempFiles {
+    <#
+        .SYNOPSIS
+            Removes user and Windows temporary files.
+    #>
     Write-Host "`n[Temp Cleanup] Removing temporary files..." -ForegroundColor Cyan
     Write-Log "Clearing temporary files"
 
@@ -47,6 +60,10 @@ function Clear-TempFiles {
 }
 
 function Clear-BrowserCaches {
+    <#
+        .SYNOPSIS
+            Clears cache folders for Chrome, Edge, and Firefox.
+    #>
     Write-Host "`n[Browser Cleanup] Clearing browser caches..." -ForegroundColor Cyan
     Write-Log "Clearing browser caches"
 
@@ -69,6 +86,10 @@ function Clear-BrowserCaches {
 }
 
 function Run-ComponentCleanup {
+    <#
+        .SYNOPSIS
+            Runs DISM component cleanup to reduce Windows component store size.
+    #>
     Write-Host "`n[Windows Update Cleanup] Running DISM cleanup..." -ForegroundColor Cyan
     Write-Log "Running DISM component cleanup"
 
@@ -83,6 +104,10 @@ function Run-ComponentCleanup {
 # -----------------------------
 
 function Find-LargeFiles {
+    <#
+        .SYNOPSIS
+            Lists the top 50 large files outside common system folders.
+    #>
     Write-Host "`n[Large File Scanner] Searching for large files..." -ForegroundColor Cyan
     Write-Log "Scanning for large files"
 
@@ -119,6 +144,10 @@ function Find-LargeFiles {
 # -----------------------------
 
 function Full-SystemCleanup {
+    <#
+        .SYNOPSIS
+            Performs multi-target cleanup for temp/update/prefetch/recycle data.
+    #>
     Write-Host "`n[Full Cleanup] Running full system cleanup..." -ForegroundColor Cyan
     Write-Log "Running full system cleanup"
 
@@ -140,6 +169,10 @@ function Full-SystemCleanup {
 # -----------------------------
 
 function Junk-FileScanner {
+    <#
+        .SYNOPSIS
+            Searches for junk-like file patterns and offers bulk deletion.
+    #>
     Write-Host "`n[Junk Scanner] Searching for junk files..." -ForegroundColor Cyan
     Write-Log "Running junk file pattern scan"
 
@@ -177,6 +210,10 @@ function Junk-FileScanner {
 # -----------------------------
 
 function Startup-Analyzer {
+    <#
+        .SYNOPSIS
+            Reports startup-related entries from registry, tasks, folders, and services.
+    #>
     Write-Host "`n[Startup Analyzer] Collecting startup entries..." -ForegroundColor Cyan
     Write-Log "Running startup analyzer"
 
@@ -213,6 +250,10 @@ function Startup-Analyzer {
 # -----------------------------
 
 function Registry-Cleanup {
+    <#
+        .SYNOPSIS
+            Finds registry keys matching a software name and optionally deletes them.
+    #>
     $name = Read-Host "Enter software name for registry cleanup"
     if (-not $name) { return }
 
@@ -261,6 +302,10 @@ function Registry-Cleanup {
 # -----------------------------
 
 function Deep-Uninstall {
+    <#
+        .SYNOPSIS
+            Performs deep uninstall workflow (official uninstallers + leftovers).
+    #>
     $name = Read-Host "Enter software name for deep uninstall"
     if (-not $name) { return }
 
@@ -421,6 +466,7 @@ function Show-Menu {
 }
 
 do {
+    # Main menu loop continues until explicit exit selection.
     Show-Menu
     $choice = Read-Host "Select an option (1-10)"
 

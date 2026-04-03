@@ -25,6 +25,12 @@
 # ============================================
 #  GLOBAL SETTINGS AND LOGGING
 # ============================================
+#
+# Execution model:
+# - Functions are defined first (utilities, scanners, cleanup actions).
+# - The interactive menu loop at the end dispatches user selections.
+# - All destructive actions are implemented as best-effort operations and
+#   are logged to disk for post-run review.
 
 # Root folder for logs and future extensions
 $Global:SuiteRoot = "C:\CleanupSuite"
@@ -898,6 +904,7 @@ function Show-Menu {
 }
 
 do {
+    # Main UI loop: render menu, read user input, dispatch action, repeat.
     Show-Menu
     $choice = Read-Host "Select an option (1-10)"
 
