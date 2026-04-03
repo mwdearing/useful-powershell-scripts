@@ -1,10 +1,26 @@
 # ============================================
 # COMBINED CLEANUP SUITE WITH MENUS
 # ============================================
+#
+# This is a lightweight interactive variant of the cleanup suite.
+# It focuses on three common operations:
+#   1) Full temporary/cache cleanup
+#   2) Registry key cleanup by software name
+#   3) Deep uninstall helper for services and leftover folders
 
 function Full-SystemCleanup {
+    <#
+        .SYNOPSIS
+            Performs a quick full-system cleanup pass for common cache locations.
+
+        .DESCRIPTION
+            Removes temporary files, update cache remnants, thumbnail caches,
+            prefetch files, and empties the Recycle Bin.
+    #>
     Write-Host "Running full system cleanup..." -ForegroundColor Cyan
 
+    # Cleanup targets are intentionally broad and use SilentlyContinue so
+    # inaccessible/in-use files do not stop the overall operation.
     Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force -ErrorAction SilentlyContinue
@@ -17,6 +33,10 @@ function Full-SystemCleanup {
 }
 
 function Registry-Cleanup {
+    <#
+        .SYNOPSIS
+            Finds and optionally deletes registry keys matching a software name.
+    #>
     $name = Read-Host "Enter software name for registry cleanup"
     if (-not $name) { return }
 
@@ -30,6 +50,8 @@ function Registry-Cleanup {
 
     foreach ($path in $paths) {
         try {
+            # Recursive search can be expensive, but gives broad coverage
+            # across HKCU/HKLM and 32-bit compatibility hives.
             Get-ChildItem $path -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
                 if ($_.Name -like "*$name*") {
                     $keys += $_.PSPath
@@ -60,12 +82,16 @@ function Registry-Cleanup {
 }
 
 function Deep-Uninstall {
+    <#
+        .SYNOPSIS
+            Removes service and filesystem leftovers for a named application.
+    #>
     $name = Read-Host "Enter software name for deep uninstall"
     if (-not $name) { return }
 
     Write-Host "Deep uninstall helper for '$name'..." -ForegroundColor Cyan
 
-    # Services
+    # Services: stop, disable, and remove matching service entries.
     $services = Get-Service -ErrorAction SilentlyContinue | Where-Object {
         $_.DisplayName -like "*$name*" -or $_.Name -like "*$name*"
     }
@@ -86,7 +112,7 @@ function Deep-Uninstall {
         Write-Host "No services found." -ForegroundColor Yellow
     }
 
-    # Folders
+    # Folders: scan common install/profile paths for matching directory names.
     $paths = @(
         "C:\Program Files",
         "C:\Program Files (x86)",
@@ -127,6 +153,10 @@ function Deep-Uninstall {
 }
 
 function Show-Menu {
+    <#
+        .SYNOPSIS
+            Displays the main menu options for this script.
+    #>
     Clear-Host
     Write-Host "===== SYSTEM CLEANUP SUITE =====" -ForegroundColor Cyan
     Write-Host "1. Full system cleanup"
@@ -136,6 +166,7 @@ function Show-Menu {
 }
 
 do {
+    # Main interaction loop: prompt until user selects Exit.
     Show-Menu
     $choice = Read-Host "Select an option (1-4)"
 

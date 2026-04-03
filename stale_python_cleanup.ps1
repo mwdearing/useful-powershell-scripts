@@ -9,11 +9,25 @@
 
 Write-Host "`n=== FULL PYTHON REMOVAL STARTED ===`n" -ForegroundColor Cyan
 
+# This script performs machine-level changes (registry, PATH, uninstallers),
+# so Administrator rights are required.
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw "Run this script from an elevated PowerShell session (Administrator)."
 }
 
 function Invoke-UninstallCommand {
+    <#
+        .SYNOPSIS
+            Executes an uninstall command string in a safer, normalized way.
+
+        .DESCRIPTION
+            Parses command strings that may be quoted or unquoted, verifies the
+            executable exists, and appends a best-effort silent switch.
+            Returns $true when process launch succeeds; otherwise $false.
+
+        .PARAMETER UninstallString
+            Raw uninstall command from registry metadata.
+    #>
     param(
         [Parameter(Mandatory=$true)]
         [string]$UninstallString
@@ -74,6 +88,7 @@ $uninstallKeys = @(
 foreach ($key in $uninstallKeys) {
     Get-ChildItem $key -ErrorAction SilentlyContinue | ForEach-Object {
 
+        # Pull uninstall metadata from each product entry.
         $props = Get-ItemProperty $_.PsPath -ErrorAction SilentlyContinue
 
         if ($props.DisplayName -like "Python*" -or $props.DisplayName -like "Python Launcher*") {
@@ -146,6 +161,8 @@ $envTargets = @(
 
 foreach ($target in $envTargets) {
 
+    # Read the current PATH for each scope (Machine/User), strip Python-like entries,
+    # then write the cleaned value back only if it changed.
     $path = [System.Environment]::GetEnvironmentVariable("PATH", $target)
 
     if ($path) {
@@ -218,6 +235,7 @@ $commands = @("python", "py", "pip")
 foreach ($cmd in $commands) {
     Write-Host "`nChecking: $cmd" -ForegroundColor DarkYellow
     try {
+        # If this succeeds, Python tooling is still discoverable in PATH.
         & $cmd --version
     } catch {
         Write-Host "$cmd not found (expected)" -ForegroundColor Green
