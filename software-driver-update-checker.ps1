@@ -273,6 +273,37 @@ function Invoke-WindowsUpdate {
     }
 }
 
+function Test-ChannelFailure {
+    param(
+        [Parameter(Mandatory)]$Result,
+        [switch]$AuditOnly
+    )
+
+    if ($null -eq $Result) {
+        return $true
+    }
+
+    if (($Result.PSObject.Properties.Name -contains 'Available') -and $Result.Available -eq $false) {
+        return $false
+    }
+
+    if (($Result.PSObject.Properties.Name -contains 'Checked') -and -not $Result.Checked) {
+        return $true
+    }
+
+    if ($Result.PSObject.Properties.Name -contains 'ExitCode') {
+        if ($null -ne $Result.ExitCode -and [int]$Result.ExitCode -ne 0) {
+            return $true
+        }
+    }
+
+    if (-not $AuditOnly -and ($Result.PSObject.Properties.Name -contains 'UpdatesDetected') -and ($Result.UpdatesDetected -eq $true) -and ($Result.PSObject.Properties.Name -contains 'Updated') -and ($Result.Updated -eq $false)) {
+        return $true
+    }
+
+    return $false
+}
+
 Write-Section -Title 'Software and Driver Update Tool'
 
 if (-not (Test-IsAdministrator)) {
@@ -347,3 +378,17 @@ if ($AuditOnly) {
 else {
     Write-Host "`nDone. Update operations completed for available channels." -ForegroundColor Yellow
 }
+
+$failedChannels = @()
+@($wingetResult, $chocoResult, $wuResult) | ForEach-Object {
+    if (Test-ChannelFailure -Result $_ -AuditOnly:$AuditOnly) {
+        $failedChannels += $_.Source
+    }
+}
+
+if ($failedChannels.Count -gt 0) {
+    Write-Host ("One or more update channels failed: {0}" -f (($failedChannels | Sort-Object -Unique) -join ', ')) -ForegroundColor Red
+    exit 1
+}
+
+exit 0
