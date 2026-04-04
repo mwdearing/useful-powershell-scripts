@@ -20,7 +20,6 @@ If you landed here looking for “what should I run first?”, start with:
   - [`cleanup-menus-v2.ps1` (enhanced legacy variant)](#cleanup-menus-v2ps1-enhanced-legacy-variant)
   - [`cleanup-menus.ps1` (lightweight menu variant)](#cleanup-menusps1-lightweight-menu-variant)
   - [`larger-file-finder.ps1` (read-only large file report)](#larger-file-finderps1-read-only-large-file-report)
-  - [`software-driver-update-checker.ps1` (software + driver updater)](#software-driver-update-checkerps1-software--driver-updater)
   - [`stale_python_cleanup.ps1` (full Python removal)](#stale_python_cleanupps1-full-python-removal)
 - [Usage Recipes](#usage-recipes)
 - [Safety Notes & Best Practices](#safety-notes--best-practices)
@@ -41,9 +40,7 @@ This repository currently includes:
    - Lightweight, focused menu script for full cleanup + registry cleanup + deep uninstall leftovers.
 4. **`larger-file-finder.ps1`**
    - Safe reporting script that scans for large files without deleting anything.
-5. **`software-driver-update-checker.ps1`**
-   - Update script that can install updates through `winget`, Chocolatey, and Windows Update API (software + driver updates), with optional audit-only mode.
-6. **`stale_python_cleanup.ps1`**
+5. **`stale_python_cleanup.ps1`**
    - Aggressive “start fresh” script to remove Python installs, launcher, registry metadata, and PATH remnants.
 
 ---
@@ -220,50 +217,6 @@ Scans a target path, excludes common system roots, and reports top large files.
 .\larger-file-finder.ps1 -Path "C:\" -Top 200 -MinSizeMB 200 |
     Out-File .\large-files-report.txt
 ```
-
----
-
-## `software-driver-update-checker.ps1` (software + driver updater)
-
-### What it does
-
-Checks and installs updates across common Windows update channels:
-
-- `winget upgrade --all` (if winget is installed)
-- `choco upgrade all` (if Chocolatey is installed)
-- Windows Update API via `Microsoft.Update.Session` for:
-  - software updates
-  - driver updates
-
-By default it performs updates; use audit mode for read-only checks. The script summarizes results and can optionally export a JSON report.
-
-### Parameters
-
-- `-IncludePreview` — include updates with titles containing Preview/Beta.
-- `-AuditOnly` — run read-only checks without installing updates.
-- `-ExportPath` — optional path for JSON report output.
-
-### Examples
-
-```powershell
-# Check and install updates
-.\software-driver-update-checker.ps1
-
-# Read-only audit mode
-.\software-driver-update-checker.ps1 -AuditOnly
-
-# Include preview/beta updates in Windows Update API results
-.\software-driver-update-checker.ps1 -IncludePreview
-
-# Export detailed report to JSON
-.\software-driver-update-checker.ps1 -ExportPath .\update-report.json
-```
-
-### Notes
-
-- Run in an elevated PowerShell session for best compatibility; installation actions may fail without Administrator rights.
-- If winget/choco are not installed, the script reports that and continues.
-- By default the script installs available updates; use `-AuditOnly` for reporting without installation.
 
 ---
 
